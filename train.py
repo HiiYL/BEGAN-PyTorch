@@ -41,7 +41,7 @@ parser.add_argument('--netG', default='', help="path to netG (to continue traini
 parser.add_argument('--h', type=int, default=128, help="h value ( size of noise vector )")
 parser.add_argument('--n', type=int, default=128, help="n value")
 parser.add_argument('--lambda_k', type=float, default=0.001)
-parser.add_argument('--gamma', type=float, default=0.5)
+parser.add_argument('--gamma', type=float, default=1.0)
 opt = parser.parse_args()
 
 print(opt)
@@ -126,7 +126,7 @@ def train(epoch):
 
 
         G_zD = netG(z_D)
-        G_z_G = G_zD.clone()#netG(z_G)
+        G_z_G = netG(z_G)
 
 
         AE_x = netD(real_A)
