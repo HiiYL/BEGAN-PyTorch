@@ -59,7 +59,7 @@ def preprocess_img(img):
     std  = (0.5, 0.5, 0.5)
 
     img = (img - mean) / std
-    img = img * 2 - 1
+    #img = img * 2 - 1
     img = np.transpose(img, (2, 0, 1))
 
     img = torch.from_numpy(img)

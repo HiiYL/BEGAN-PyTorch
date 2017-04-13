@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 from data import get_training_set, get_test_set
 import torch.backends.cudnn as cudnn
 import torchvision.utils as vutils
-from models import G,D
+from models import G,D, weights_init
 
 from tensorboard_logger import configure, log_value
 
@@ -30,7 +30,7 @@ parser.add_argument('--dataset', required=True, help='CelebA', default='CelebA')
 parser.add_argument('--batchSize', type=int, default=16, help='training batch size')
 parser.add_argument('--testBatchSize', type=int, default=16, help='testing batch size')
 parser.add_argument('--nEpochs', type=int, default=200, help='number of epochs to train for')
-parser.add_argument('--lr', type=float, default=5e-5, help='Learning Rate. Default=0.001')
+parser.add_argument('--lr', type=float, default=1e-5, help='Learning Rate. Default=0.001')
 parser.add_argument('--beta1', type=float, default=0.5, help='beta1 for adam. default=0.5')
 parser.add_argument('--cuda', action='store_true', help='use cuda?')
 parser.add_argument('--threads', type=int, default=8, help='number of threads for data loader to use')
@@ -74,6 +74,7 @@ if opt.netG:
         parameter.requires_grad = True
 else:
     netG = G(h=opt.h, n=opt.n, output_dim=(3,64,64))
+    netG.apply(weights_init)
 
 if opt.netD:
     netD = torch.load(opt.netD)
@@ -82,6 +83,7 @@ if opt.netD:
         parameter.requires_grad = True
 else:
     netD = D(h=opt.h, n=opt.n, input_dim=(3,64,64))
+    netD.apply(weights_init)
 
 
 print(netG)
@@ -123,7 +125,6 @@ def train(epoch):
 
         z_D.data.normal_(-1,1)
         z_G.data.normal_(-1,1)
-
 
         G_zD = netG(z_D)
         G_z_G = netG(z_G)

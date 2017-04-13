@@ -7,6 +7,13 @@ import math
 import torch.utils.model_zoo as model_zoo
 import torchvision.models as models
 
+
+def weights_init(m):
+    classname = m.__class__.__name__
+    if classname.find('Conv') != -1:
+        m.weight.data.normal_(0.0, 0.02)
+        m.bias.data.fill_(0)
+        
 class G(nn.Module):
     def __init__(self, h, n, output_dim=(64,64,3)):
         super(G, self).__init__()
