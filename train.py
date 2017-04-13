@@ -122,25 +122,25 @@ def train(epoch):
         netD.zero_grad()
 
         z_D.data.normal_(-1,1)
-        z_G.data.normal_(-1,1)
+        # z_G.data.normal_(-1,1)
 
 
-        G_zD = netG(z_D)
-        G_z_G = netG(z_G)
+        G_z = netG(z_D)
+        # G_z_G = netG(z_G)
 
 
         AE_x = netD(real_A)
-        AE_G_zD = netD(G_zD.detach())
-        AE_G_zG = netD(G_z_G)
+        AE_G = netD(G_zD)
+        # AE_G_zG = netD(G_z_G)
 
         d_loss_real = criterion_l1(AE_x, real_A)
-        d_loss_fake = criterion_l1(AE_G_zD, G_zD.detach())
+        d_loss_fake = criterion_l1(AE_G, G_z.detach())
 
         D_loss = d_loss_real - k_t * d_loss_fake
         D_loss.backward()
 
 
-        G_loss = criterion_l1(G_z_G, AE_G_zG.detach())
+        G_loss = criterion_l1(G_z, AE_G.detach())
         G_loss.backward()
 
         optimizerD.step()
@@ -158,7 +158,7 @@ def train(epoch):
 
 
         if iteration % 100 == 1:
-            vutils.save_image(AE_G_zG.data, 'log/{}_AEGzG.jpg'.format(total_iterations), normalize=True)
+            vutils.save_image(AE_G.data, 'log/{}_AEGzG.jpg'.format(total_iterations), normalize=True)
             total_iterations += iteration
             # log_value('Loss', loss.data[0], total_iterations)
     # log_value('training_loss', loss.data[0], epoch)
