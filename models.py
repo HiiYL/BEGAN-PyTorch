@@ -23,9 +23,9 @@ class G(nn.Module):
         conv_layers = []
         for i in range(self.blocks):
             conv_layers.append(nn.Conv2d(n, n, kernel_size=3, stride=1, padding=1))
-            conv_layers.append(nn.ELU(inplace=True))
+            conv_layers.append(nn.ELU())
             conv_layers.append(nn.Conv2d(n, n, kernel_size=3, stride=1, padding=1))
-            conv_layers.append(nn.ELU(inplace=True))
+            conv_layers.append(nn.ELU())
 
             if i < self.blocks - 1:
                 conv_layers.append(nn.UpsamplingNearest2d(scale_factor=2))
@@ -57,14 +57,14 @@ class D(nn.Module):
         for i in range(self.blocks):
             channel_size = ( i + 1 ) * n
             encoder_layers.append(nn.Conv2d(prev_channel_size, channel_size, kernel_size=3, stride=1, padding=1))
-            encoder_layers.append(nn.ELU(inplace=True))
+            encoder_layers.append(nn.ELU())
             encoder_layers.append(nn.Conv2d(channel_size, channel_size, kernel_size=3, stride=1, padding=1))
-            encoder_layers.append(nn.ELU(inplace=True))
+            encoder_layers.append(nn.ELU())
 
             if i < self.blocks - 1:
                 # Downsampling
                 encoder_layers.append(nn.Conv2d(channel_size, channel_size, kernel_size=3, stride=2, padding=1))
-                encoder_layers.append(nn.ELU(inplace=True))
+                encoder_layers.append(nn.ELU())
 
             prev_channel_size = channel_size
 
@@ -76,9 +76,9 @@ class D(nn.Module):
         decoder_layers = []
         for i in range(self.blocks):
             decoder_layers.append(nn.Conv2d(n, n, kernel_size=3, stride=1, padding=1))
-            decoder_layers.append(nn.ELU(inplace=True))
+            decoder_layers.append(nn.ELU())
             decoder_layers.append(nn.Conv2d(n, n, kernel_size=3, stride=1, padding=1))
-            decoder_layers.append(nn.ELU(inplace=True))
+            decoder_layers.append(nn.ELU())
 
             if i < self.blocks - 1:
                 decoder_layers.append(nn.UpsamplingNearest2d(scale_factor=2))
