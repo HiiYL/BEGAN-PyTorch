@@ -41,7 +41,7 @@ parser.add_argument('--netG', default='', help="path to netG (to continue traini
 parser.add_argument('--h', type=int, default=128, help="h value ( size of noise vector )")
 parser.add_argument('--n', type=int, default=128, help="n value")
 parser.add_argument('--lambda_k', type=float, default=0.001)
-parser.add_argument('--gamma', type=float, default=1.0)
+parser.add_argument('--gamma', type=float, default=0.5)
 opt = parser.parse_args()
 
 print(opt)
