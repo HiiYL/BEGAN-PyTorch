@@ -120,47 +120,58 @@ def train(epoch):
         ## GT Image
         real_A.data.resize_(real_a_cpu.size()).copy_(real_a_cpu)
 
-        netG.zero_grad()
+        
         netD.zero_grad()
+        netG.zero_grad()
+
 
         z_D.data.normal_(-1,1)
-        z_G.data.normal_(-1,1)
 
         G_zD = netG(z_D)
-        G_z_G = netG(z_G)
-
 
         AE_x = netD(real_A)
-        AE_G_zD = netD(G_zD.detach())
-        AE_G_zG = netD(G_z_G)
+        AE_G_zD = netD(G_zD)
 
-        d_loss_real = criterion_l1(AE_x, real_A)
-        d_loss_fake = criterion_l1(AE_G_zD, G_zD.detach())
+        d_loss_real = torch.mean(torch.sum(torch.abs(real_A - AE_x), 1))#criterion_l1(AE_x, real_A)
+        d_loss_fake = torch.mean(torch.sum(torch.abs(G_zD - AE_G_zD), 1))#criterion_l1(AE_G_zD, G_zD.detach())
 
         D_loss = d_loss_real - k_t * d_loss_fake
         D_loss.backward()
-
-
-        G_loss = criterion_l1(G_z_G, AE_G_zG.detach())
-        G_loss.backward()
-
         optimizerD.step()
+
+
+
+
+        netD.zero_grad()
+        netG.zero_grad()
+
+        z_G.data.normal_(-1,1)
+
+        G_z_G = netG(z_G)
+        AE_G_zG = netD(G_z_G)
+
+        G_loss = torch.mean(torch.sum(torch.abs(G_z_G - AE_G_zG), 1))#criterion_l1(G_z_G, AE_G_zG.detach())
+        G_loss.backward()
         optimizerG.step()
 
         g_d_balance = ( opt.gamma * d_loss_real - G_loss ).data[0]
 
         k_t += opt.lambda_k * g_d_balance
+        k_t = max(min(1, k_t), 0)
 
         global_measure = d_loss_real.data[0] + abs(g_d_balance)
 
         if True: #iteration % 1000 == 1:
-            print("===> Epoch[{}]({}/{}): Loss: {:.4f}".format(
-                epoch, iteration, len(training_data_loader), global_measure))
+            print("===> Epoch[{}]({}/{}): Loss: {:.4f} k_t: {:.4f}".format(
+                epoch, iteration, len(training_data_loader), global_measure,k_t))
 
 
         if iteration % 100 == 1:
             vutils.save_image(AE_G_zG.data, 'log/{}_AEGzG.jpg'.format(total_iterations), normalize=True)
             total_iterations += iteration
+
+        if iteration % 200 == 0:
+            
             # log_value('Loss', loss.data[0], total_iterations)
     # log_value('training_loss', loss.data[0], epoch)
 

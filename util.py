@@ -1,5 +1,4 @@
 import numpy as np
-from scipy.misc import imread, imresize, imsave
 import torch
 import cv2
 
@@ -19,7 +18,7 @@ def load_img(filepath, returnShape=False):
 
     # numpy.ndarray to FloatTensor
     # img = torch.from_numpy(img)
-    img = imresize(img, (64,64))
+    img = cv2.resize(img, (64,64))
     img = preprocess_img(img)
     if returnShape: 
         return img,shape
@@ -33,7 +32,7 @@ def save_img(img, filename):
     img *= 255.0
     img = img.clip(0, 255)
     img = np.transpose(img, (1, 2, 0))
-    img = imresize(img, (250, 200, 3))
+    img = cv2.imresize(img, (250, 200, 3))
     img = img.astype(np.uint8)
     imsave(filename, img)
     print("Image saved as {}".format(filename))
