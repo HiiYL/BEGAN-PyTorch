@@ -156,6 +156,7 @@ def train(epoch):
 
         k_t += opt.lambda_k * balance
         k_t = max(min(1, k_t), 0)
+        k_t = k_t.data[0]
 
         if True: #iteration % 1000 == 1:
             print("===> Epoch[{}]({}/{}): Loss: {:.4f} k_t: {:.4f}".format(
