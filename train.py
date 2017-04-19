@@ -8,10 +8,14 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
-from data import get_training_set, get_test_set
+from dataset import DatasetFromFolder
 import torch.backends.cudnn as cudnn
 import torchvision.utils as vutils
 from models import G,D, weights_init
+
+from torchvision import transforms
+from os.path import join
+
 
 from tensorboard_logger import configure, log_value
 
@@ -30,7 +34,7 @@ parser.add_argument('--dataset', required=True, help='CelebA', default='CelebA')
 parser.add_argument('--batchSize', type=int, default=16, help='training batch size')
 parser.add_argument('--testBatchSize', type=int, default=16, help='testing batch size')
 parser.add_argument('--nEpochs', type=int, default=200, help='number of epochs to train for')
-parser.add_argument('--lr', type=float, default=1e-5, help='Learning Rate. Default=0.001')
+parser.add_argument('--lr', type=float, default=0.00008, help='Learning Rate. Default=0.001')
 parser.add_argument('--beta1', type=float, default=0.5, help='beta1 for adam. default=0.5')
 parser.add_argument('--cuda', action='store_true', help='use cuda?')
 parser.add_argument('--threads', type=int, default=8, help='number of threads for data loader to use')
@@ -38,7 +42,7 @@ parser.add_argument('--seed', type=int, default=123, help='random seed to use. D
 parser.add_argument('--lamb', type=int, default=100, help='weight on L1 term in objective')
 parser.add_argument('--netD', default='', help="path to netD (to continue training)")
 parser.add_argument('--netG', default='', help="path to netG (to continue training)")
-parser.add_argument('--h', type=int, default=128, help="h value ( size of noise vector )")
+parser.add_argument('--h', type=int, default=64, help="h value ( size of noise vector )")
 parser.add_argument('--n', type=int, default=128, help="n value")
 parser.add_argument('--lambda_k', type=float, default=0.001)
 parser.add_argument('--gamma', type=float, default=0.5)
@@ -59,8 +63,15 @@ print('===> Loading datasets')
 root_path = "dataset/"
 
 
+train_transform = transforms.Compose([
+    transforms.CenterCrop(160),
+    transforms.Scale(size=64),
+    transforms.ToTensor(), 
+    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
-train_set = get_training_set(root_path + opt.dataset)
+
+
+train_set = DatasetFromFolder(join(join(root_path,opt.dataset), "train"), train_transform)
 
 # test_set = get_test_set(root_path + opt.dataset)
 training_data_loader = DataLoader(dataset=train_set, num_workers=opt.threads, batch_size=opt.batchSize, shuffle=True)
@@ -74,7 +85,7 @@ if opt.netG:
         parameter.requires_grad = True
 else:
     netG = G(h=opt.h, n=opt.n, output_dim=(3,64,64))
-    netG.apply(weights_init)
+    #netG.apply(weights_init)
 
 if opt.netD:
     netD = torch.load(opt.netD)
@@ -83,7 +94,7 @@ if opt.netD:
         parameter.requires_grad = True
 else:
     netD = D(h=opt.h, n=opt.n, input_dim=(3,64,64))
-    netD.apply(weights_init)
+    #netD.apply(weights_init)
 
 
 print(netG)
@@ -134,38 +145,48 @@ def train(epoch):
 
         D_loss = d_loss_real - k_t * d_loss_fake
         D_loss.backward()
+        optimizerD.step()
         # optimizerD.step()
 
-        # netD.zero_grad()
-        # netG.zero_grad()
+        netD.zero_grad()
+        netG.zero_grad()
 
         z_G.data.normal_(-1,1)
 
-        G_z_G = netG(z_G)
-        AE_G_zG = netD(G_z_G)
+        G_zG = netG(z_G)
+        AE_G_zG = netD(G_zG)
 
-        G_loss = torch.mean(torch.abs(AE_G_zG, G_z_G))#criterion_l1(G_z_G, AE_G_zG.detach())
+        G_loss = torch.mean(torch.abs(AE_G_zG - G_zG))#criterion_l1(G_zG, AE_G_zG.detach())
         G_loss.backward()
-
-        optimizerD.step()
         optimizerG.step()
 
 
         balance = ( opt.gamma * d_loss_real - G_loss ).data[0]
-        measure = d_loss_real.data[0] + torch.abs(balance)
+        measure = d_loss_real.data[0] + abs(balance)
 
         k_t += opt.lambda_k * balance
         k_t = max(min(1, k_t), 0)
-        k_t = k_t.data[0]
 
-        if True: #iteration % 1000 == 1:
+        if iteration % 10 == 0: #iteration % 1000 == 1:
+            #print(real_A.data.min())
+            #print(real_A.data.max())
             print("===> Epoch[{}]({}/{}): Loss: {:.4f} k_t: {:.4f}".format(
                 epoch, iteration, len(training_data_loader), measure,k_t))
 
+        # def clip(x):
+        #     torch.max(torch.min(x, 1)
 
-        if iteration % 100 == 1:
-            vutils.save_image(AE_G_zG.data, 'log/{}_AEGzG.jpg'.format(total_iterations), normalize=True)
-            total_iterations += iteration
+
+        if iteration % 500 == 0:
+            # print(AE_G_zG.data.min())
+            # print(AE_G_zG.data.max())
+            # print(AE_x.min())
+            # print(AE_x.max())
+            total_iterations += 500
+            vutils.save_image(AE_G_zD.data, 'log/{}_D_fake.jpg'.format(total_iterations), normalize=True,range=(-1,1))
+            vutils.save_image(AE_x.data, 'log/{}_D_real.jpg'.format(total_iterations), normalize=True,range=(-1,1))
+            vutils.save_image(G_zG.data, 'log/{}_G.jpg'.format(total_iterations), normalize=True,range=(-1,1))
+
             
             # log_value('Loss', loss.data[0], total_iterations)
     # log_value('training_loss', loss.data[0], epoch)

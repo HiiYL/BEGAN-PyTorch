@@ -40,6 +40,8 @@ class G(nn.Module):
         conv_layers.append( nn.Conv2d(n,channel, kernel_size=3, stride=1, padding=1) )
         self.conv = nn.Sequential(*conv_layers)
 
+        #self.tanh = nn.Tanh()
+
 
     def forward(self, x):
         fc_out = self.fc(x).view(-1,self.n,8,8)
@@ -92,6 +94,7 @@ class D(nn.Module):
 
         decoder_layers.append( nn.Conv2d(n,channel, kernel_size=3, stride=1, padding=1) )
         self.decoder = nn.Sequential(*decoder_layers)
+        #self.tanh = nn.Tanh()
 
 
     def forward(self,x):

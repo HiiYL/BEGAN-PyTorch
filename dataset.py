@@ -12,17 +12,23 @@ from pandas import HDFStore
 import numpy as np
 import torch
 import random
+from PIL import Image
 
 
 class DatasetFromFolder(data.Dataset):
-    def __init__(self, image_dir):
+    def __init__(self, image_dir, transform=None):
         super(DatasetFromFolder, self).__init__()
         self.image_dir = image_dir
         self.image_filenames = [ x for x in listdir(image_dir) if is_image_file(x)]
+        if transform:
+            self.transform = transform
 
     def __getitem__(self, index):
         # Load Image
-        image = load_img(join(self.image_dir, self.image_filenames[index]))
+        image = Image.open(join(self.image_dir, self.image_filenames[index])).convert('RGB')
+
+        if self.transform is not None:
+            image = self.transform(image)
 
         return image
 
