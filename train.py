@@ -34,14 +34,19 @@ parser.add_argument('--dataset', required=True, help='CelebA', default='CelebA')
 parser.add_argument('--batchSize', type=int, default=16, help='training batch size')
 parser.add_argument('--testBatchSize', type=int, default=16, help='testing batch size')
 parser.add_argument('--nEpochs', type=int, default=200, help='number of epochs to train for')
-parser.add_argument('--lr', type=float, default=0.00008, help='Learning Rate. Default=0.001')
-parser.add_argument('--beta1', type=float, default=0.5, help='beta1 for adam. default=0.5')
+parser.add_argument('--lr', type=float, default=1e-5, help='Learning Rate. Default=0.001')
 parser.add_argument('--cuda', action='store_true', help='use cuda?')
+
+
 parser.add_argument('--threads', type=int, default=8, help='number of threads for data loader to use')
 parser.add_argument('--seed', type=int, default=123, help='random seed to use. Default=123')
 parser.add_argument('--lamb', type=int, default=100, help='weight on L1 term in objective')
 parser.add_argument('--netD', default='', help="path to netD (to continue training)")
 parser.add_argument('--netG', default='', help="path to netG (to continue training)")
+
+
+parser.add_argument('--beta1', type=float, default=0.9, help='beta1 for adam. default=0.5')
+parser.add_argument('--beta2', type=float, default=0.999, help='beta2 for adam. default=0.999')
 parser.add_argument('--h', type=int, default=64, help="h value ( size of noise vector )")
 parser.add_argument('--n', type=int, default=128, help="n value")
 parser.add_argument('--lambda_k', type=float, default=0.001)
@@ -118,13 +123,15 @@ z_D = Variable(z_D)
 z_G = Variable(z_G)
 
 # setup optimizer
-optimizerG = optim.Adam(netG.parameters(), lr=opt.lr)
-optimizerD = optim.Adam(netD.parameters(), lr=opt.lr)
+optimizerG = optim.Adam(netG.parameters(), lr=opt.lr, betas=(opt.beta1, opt.beta2))
+optimizerD = optim.Adam(netD.parameters(), lr=opt.lr, betas=(opt.beta1, opt.beta2))
 
 total_iterations=0
 k_t=0
+fixed_sample = None
+fixed_x = None
 def train(epoch):
-    global total_iterations, k_t
+    global total_iterations, k_t, fixed_sample, fixed_x
     for iteration, batch in enumerate(training_data_loader, 1):
         real_a_cpu = batch
         ## GT Image
@@ -135,30 +142,35 @@ def train(epoch):
         netG.zero_grad()
 
         z_D.data.normal_(-1,1)
+        z_G.data.normal_(-1,1)
 
         G_zD = netG(z_D)
         AE_x = netD(real_A)
-        AE_G_zD = netD(G_zD)
-
-        d_loss_real = torch.mean(torch.abs(AE_x - real_A)) #criterion_l1(AE_x, real_A)
-        d_loss_fake = torch.mean(torch.abs(AE_G_zD - G_zD)) #criterion_l1(AE_G_zD, G_zD.detach())
-
-        D_loss = d_loss_real - k_t * d_loss_fake
-        D_loss.backward()
-        optimizerD.step()
-        # optimizerD.step()
-
-        netD.zero_grad()
-        netG.zero_grad()
-
-        z_G.data.normal_(-1,1)
+        AE_G_zD = netD(G_zD.detach())
 
         G_zG = netG(z_G)
         AE_G_zG = netD(G_zG)
 
-        G_loss = torch.mean(torch.abs(AE_G_zG - G_zG))#criterion_l1(G_zG, AE_G_zG.detach())
+        d_loss_real = torch.mean(torch.abs(AE_x - real_A))#criterion_l1(AE_x, real_A)
+        d_loss_fake = torch.mean(torch.abs(AE_G_zD - G_zD))#criterion_l1(AE_G_zD, G_zD.detach())
+
+        D_loss = d_loss_real - k_t * d_loss_fake
+        D_loss.backward()
+        optimizerD.step()
+
+        netD.zero_grad()
+        netG.zero_grad()
+
+        G_loss = torch.mean(torch.abs(G_zG - AE_G_zG))#criterion_l1(G_zG, AE_G_zG.detach())
         G_loss.backward()
+
         optimizerG.step()
+
+        if fixed_sample is None:
+            fixed_sample = Variable(z_G.data, volatile=True)
+            fixed_x = Variable(real_A.data, volatile=True)
+            vutils.save_image(real_A.data, 'log/x_fixed.jpg', normalize=True,range=(-1,1))
+
 
 
         balance = ( opt.gamma * d_loss_real - G_loss ).data[0]
@@ -170,8 +182,8 @@ def train(epoch):
         if iteration % 10 == 0: #iteration % 1000 == 1:
             #print(real_A.data.min())
             #print(real_A.data.max())
-            print("===> Epoch[{}]({}/{}): Loss: {:.4f} k_t: {:.4f}".format(
-                epoch, iteration, len(training_data_loader), measure,k_t))
+            print("===> Epoch[{}]({}/{}): D_Loss: {:.4f} | G_Loss: {:.4f} | Measure: {:.4f} | k_t: {:.4f}".format(
+                epoch, iteration, len(training_data_loader), D_loss.data[0], G_loss.data[0], measure,k_t))
 
         # def clip(x):
         #     torch.max(torch.min(x, 1)
@@ -182,10 +194,14 @@ def train(epoch):
             # print(AE_G_zG.data.max())
             # print(AE_x.min())
             # print(AE_x.max())
+
+            ae_x = netD(fixed_x)
+            g = netG(fixed_sample)
+            ae_g = netD(g)
             total_iterations += 500
-            vutils.save_image(AE_G_zD.data, 'log/{}_D_fake.jpg'.format(total_iterations), normalize=True,range=(-1,1))
-            vutils.save_image(AE_x.data, 'log/{}_D_real.jpg'.format(total_iterations), normalize=True,range=(-1,1))
-            vutils.save_image(G_zG.data, 'log/{}_G.jpg'.format(total_iterations), normalize=True,range=(-1,1))
+            vutils.save_image(ae_g.data, 'log/{}_D_fake.jpg'.format(total_iterations), normalize=True,range=(-1,1))
+            vutils.save_image(ae_x.data, 'log/{}_D_real.jpg'.format(total_iterations), normalize=True,range=(-1,1))
+            vutils.save_image(g.data, 'log/{}_G.jpg'.format(total_iterations), normalize=True,range=(-1,1))
 
             
             # log_value('Loss', loss.data[0], total_iterations)
