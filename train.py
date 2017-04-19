@@ -90,7 +90,7 @@ if opt.netG:
         parameter.requires_grad = True
 else:
     netG = G(h=opt.h, n=opt.n, output_dim=(3,64,64))
-    #netG.apply(weights_init)
+    netG.apply(weights_init)
 
 if opt.netD:
     netD = torch.load(opt.netD)
@@ -99,7 +99,7 @@ if opt.netD:
         parameter.requires_grad = True
 else:
     netD = D(h=opt.h, n=opt.n, input_dim=(3,64,64))
-    #netD.apply(weights_init)
+    netD.apply(weights_init)
 
 
 print(netG)
@@ -141,8 +141,8 @@ def train(epoch):
         netD.zero_grad()
         netG.zero_grad()
 
-        z_D.data.normal_(-1,1)
-        z_G.data.normal_(-1,1)
+        z_D.data.normal_(0,1)
+        z_G.data.normal_(0,1)
 
         G_zD = netG(z_D)
         AE_x = netD(real_A)
@@ -167,8 +167,8 @@ def train(epoch):
         optimizerG.step()
 
         if fixed_sample is None:
-            fixed_sample = Variable(z_G.data, volatile=True)
-            fixed_x = Variable(real_A.data, volatile=True)
+            fixed_sample = Variable(z_G.clone().data, volatile=True)
+            fixed_x = Variable(real_A.clone().data, volatile=True)
             vutils.save_image(real_A.data, 'log/x_fixed.jpg', normalize=True,range=(-1,1))
 
 
@@ -211,7 +211,16 @@ def train(epoch):
 def test(epoch):
     pass
 
-
+def checkpoint(epoch):
+    if not os.path.exists("checkpoint"):
+        os.mkdir("checkpoint")
+    if not os.path.exists(os.path.join("checkpoint", opt.dataset)):
+        os.mkdir(os.path.join("checkpoint", opt.dataset))
+    netG_model_out_path = "checkpoint/{}/netG_model_epoch_{}_{}.pth".format(opt.dataset, epoch, datetime.datetime.now())
+    netD_model_out_path = "checkpoint/{}/netD_model_epoch_{}_{}.pth".format(opt.dataset, epoch, datetime.datetime.now())
+    torch.save(netG, netG_model_out_path)
+    torch.save(netD, netD_model_out_path)
+    print("Checkpoint saved to {}".format("checkpoint" + opt.dataset))
 
 
 for epoch in range(1, opt.nEpochs + 1):
@@ -222,5 +231,5 @@ for epoch in range(1, opt.nEpochs + 1):
     # test(epoch)
 
 
-    if epoch % 5 == 0:
+    if True: #epoch % 5 == 0:
         checkpoint(epoch)
