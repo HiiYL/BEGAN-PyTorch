@@ -44,8 +44,9 @@ class DatasetFromFolder(data.Dataset):
             image = self.transform(image)
 
         embedding = random.choice(self.embeddings[index])
+        wrong_embedding = random.choice(random.choice(self.embeddings))
 
-        return image, embedding
+        return image, embedding, wrong_embedding
 
     def __len__(self):
         return len(self.image_filenames)

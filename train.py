@@ -105,6 +105,7 @@ print(netD)
 criterion_l1 = nn.L1Loss()
 real_A = torch.FloatTensor(opt.batchSize, 3, opt.image_size, opt.image_size)
 embedding_v = torch.FloatTensor(opt.batchSize, 1024)
+wrong_embedding_v = torch.FloatTensor(opt.batchSize, 1024)
 z_D = torch.FloatTensor(opt.batchSize, opt.h)
 z_G = torch.FloatTensor(opt.batchSize, opt.h)
 
@@ -113,6 +114,7 @@ if opt.cuda:
     netD = netD.cuda()
     criterion_l1 = criterion_l1.cuda()
     embedding_v = embedding_v.cuda()
+    wrong_embedding_v = wrong_embedding_v.cuda()
     real_A = real_A.cuda()
     z_D, z_G = z_D.cuda(), z_G.cuda()
 
@@ -133,10 +135,12 @@ fixed_x = None
 fixed_embedding = None
 def train(epoch, save_path, total_iterations, k_t, fixed_sample, fixed_x, fixed_embedding):
     for iteration, batch in enumerate(training_data_loader, 1):
-        real_a_cpu, embedding = batch
+        real_a_cpu, embedding, wrong_embedding = batch
         ## GT Image
         real_A.data.resize_(real_a_cpu.size()).copy_(real_a_cpu)
         embedding_v.data.resize_(embedding.size()).copy_(embedding)
+
+        wrong_embedding_v.data.resize_(wrong_embedding.size()).copy_(wrong_embedding)
 
         
         netD.zero_grad()
@@ -150,16 +154,19 @@ def train(epoch, save_path, total_iterations, k_t, fixed_sample, fixed_x, fixed_
         z_G.data.resize_(current_batch_size, z_G.size(1)).normal_(0,1)
 
         G_zD = netG(torch.cat((embedding_v,z_D),1))
-        AE_x = netD(real_A)
+        AE_x = netD(real_A,embedding_v)
         AE_G_zD = netD(G_zD.detach())
 
         G_zG = netG(torch.cat((embedding_v,z_G),1))
-        AE_G_zG = netD(G_zG)
+        AE_G_zG = netD(G_zG,embedding_v)
+
+        AE_x_wrong = netD(real_A, wrong_embedding_v)
 
         d_loss_real = torch.mean(torch.abs(AE_x - real_A))#criterion_l1(AE_x, real_A) #
+        d_loss_wrong_comment = torch.mean(torch.abs(AE_x_wrong - real_A))
         d_loss_fake = torch.mean(torch.abs(AE_G_zD - G_zD)) #criterion_l1(AE_G_zD, G_zD.detach()) ##
 
-        D_loss = d_loss_real - k_t * d_loss_fake
+        D_loss = d_loss_real - d_loss_wrong_comment - k_t * d_loss_fake
         D_loss.backward()
         optimizerD.step()
 
@@ -195,9 +202,9 @@ def train(epoch, save_path, total_iterations, k_t, fixed_sample, fixed_x, fixed_
             log_value('k', k_t, total_iterations)
 
         if (total_iterations % 500 == 0) or total_iterations == 1:
-            ae_x = netD(fixed_x)
+            ae_x = netD(fixed_x,fixed_embedding)
             g = netG(torch.cat((fixed_embedding,fixed_sample),1))
-            ae_g = netD(g)
+            ae_g = netD(g,fixed_embedding)
             
             vutils.save_image(ae_g.data, '{}/{}_D_fake.jpg'.format(save_path, total_iterations), normalize=True,range=(-1,1))
             vutils.save_image(ae_x.data, '{}/{}_D_real.jpg'.format(save_path, total_iterations), normalize=True,range=(-1,1))
