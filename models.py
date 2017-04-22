@@ -27,7 +27,7 @@ class G(nn.Module):
 
         print("[!] {} blocks in G ".format(self.blocks))
 
-        self.fc = nn.Linear(h, 8 * 8 * n)
+        self.fc = nn.Linear(h + 1024, 8 * 8 * n)
 
         conv_layers = []
         for i in range(self.blocks):
