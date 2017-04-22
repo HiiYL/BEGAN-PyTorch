@@ -81,7 +81,7 @@ class D(nn.Module):
 
         self.encoder = nn.Sequential(*encoder_layers)
 
-        self.fc_encode = nn.Linear(8 * 8 * self.blocks * n, h + 1024)
+        self.fc_encode = nn.Linear(8 * 8 * self.blocks * n, h)
         self.fc_decode = nn.Linear(h + 1024, 8 * 8 * n)
 
         decoder_layers = []
@@ -106,6 +106,7 @@ class D(nn.Module):
         x = self.fc_encode(x)
 
         x = torch.cat((x, embedding), 1)
+
         #   decoder
         x = self.fc_decode(x).view(-1,self.n,8,8)
         x = self.decoder(x)

@@ -41,7 +41,7 @@ parser.add_argument('--lamb', type=int, default=100, help='weight on L1 term in 
 parser.add_argument('--netD', default='', help="path to netD (to continue training)")
 parser.add_argument('--netG', default='', help="path to netG (to continue training)")
 parser.add_argument('--log_step', default=10, help="logging frequency")
-parser.add_argument('--image_size', default=128, help="image size")
+parser.add_argument('--image_size', default=64, help="image size")
 
 
 parser.add_argument('--beta1', type=float, default=0.9, help='beta1 for adam. default=0.5')
@@ -120,6 +120,7 @@ if opt.cuda:
 
 
 embedding_v = Variable(embedding_v)
+wrong_embedding_v = Variable(wrong_embedding_v)
 real_A = Variable(real_A)
 z_D = Variable(z_D)
 z_G = Variable(z_G)
@@ -155,18 +156,18 @@ def train(epoch, save_path, total_iterations, k_t, fixed_sample, fixed_x, fixed_
 
         G_zD = netG(torch.cat((embedding_v,z_D),1))
         AE_x = netD(real_A,embedding_v)
-        AE_G_zD = netD(G_zD.detach())
+        AE_G_zD = netD(G_zD.detach(),embedding_v)
 
         G_zG = netG(torch.cat((embedding_v,z_G),1))
         AE_G_zG = netD(G_zG,embedding_v)
 
-        AE_x_wrong = netD(real_A, wrong_embedding_v)
+        #AE_x_wrong = netD(real_A, wrong_embedding_v)
 
         d_loss_real = torch.mean(torch.abs(AE_x - real_A))#criterion_l1(AE_x, real_A) #
-        d_loss_wrong_comment = torch.mean(torch.abs(AE_x_wrong - real_A))
+        #d_loss_wrong_comment = torch.mean(torch.abs(AE_x_wrong - real_A))
         d_loss_fake = torch.mean(torch.abs(AE_G_zD - G_zD)) #criterion_l1(AE_G_zD, G_zD.detach()) ##
 
-        D_loss = d_loss_real - d_loss_wrong_comment - k_t * d_loss_fake
+        D_loss = d_loss_real - k_t * d_loss_fake
         D_loss.backward()
         optimizerD.step()
 
