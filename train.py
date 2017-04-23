@@ -32,7 +32,7 @@ parser.add_argument('--batchSize', type=int, default=4, help='training batch siz
 parser.add_argument('--testBatchSize', type=int, default=4, help='testing batch size')
 parser.add_argument('--nEpochs', type=int, default=200, help='number of epochs to train for')
 parser.add_argument('--lr', type=float, default=5e-5, help='Learning Rate. Default=0.001')
-parser.add_argument('--lr_update_step', type=float, default=10000, help='Reduce learning rate by factor of 2 every n iterations. Default=1')
+parser.add_argument('--lr_update_step', type=float, default=20000, help='Reduce learning rate by factor of 2 every n iterations. Default=50000')
 parser.add_argument('--cuda', action='store_true', help='use cuda?')
 
 parser.add_argument('--threads', type=int, default=8, help='number of threads for data loader to use')
@@ -46,7 +46,7 @@ parser.add_argument('--image_size', default=64, help="image size")
 
 parser.add_argument('--beta1', type=float, default=0.9, help='beta1 for adam. default=0.5')
 parser.add_argument('--beta2', type=float, default=0.999, help='beta2 for adam. default=0.999')
-parser.add_argument('--h', type=int, default=512, help="h value ( size of noise vector )")
+parser.add_argument('--h', type=int, default=128, help="h value ( size of noise vector )")
 parser.add_argument('--n', type=int, default=128, help="n value")
 parser.add_argument('--lambda_k', type=float, default=0.001)
 parser.add_argument('--gamma', type=float, default=0.5)
@@ -85,7 +85,7 @@ print('===> Building model')
 if opt.netG:
     netG = torch.load(opt.netG)
     print('==> Loaded model.')
-    for parameter in netG:
+    for parameter in netG.parameters():
         parameter.requires_grad = True
 else:
     netG = G(h=opt.h, n=opt.n, output_dim=(3,opt.image_size,opt.image_size))
@@ -94,7 +94,7 @@ else:
 if opt.netD:
     netD = torch.load(opt.netD)
     print('==> Loaded model.')
-    for parameter in netG:
+    for parameter in netG.parameters():
         parameter.requires_grad = True
 else:
     netD = D(h=opt.h, n=opt.n, input_dim=(3,opt.image_size,opt.image_size))
@@ -161,13 +161,13 @@ def train(epoch, save_path, total_iterations, k_t, fixed_sample, fixed_x, fixed_
         G_zG = netG(torch.cat((embedding_v,z_G),1))
         AE_G_zG = netD(G_zG,embedding_v)
 
-        #AE_x_wrong = netD(real_A, wrong_embedding_v)
+        AE_x_wrong = netD(real_A, wrong_embedding_v)
 
-        d_loss_real = torch.mean(torch.abs(AE_x - real_A))#criterion_l1(AE_x, real_A) #
-        #d_loss_wrong_comment = torch.mean(torch.abs(AE_x_wrong - real_A))
-        d_loss_fake = torch.mean(torch.abs(AE_G_zD - G_zD)) #criterion_l1(AE_G_zD, G_zD.detach()) ##
+        d_loss_real          = torch.mean(torch.abs(AE_x - real_A))#criterion_l1(AE_x, real_A) #
+        d_loss_wrong_comment = torch.mean(torch.abs(AE_x_wrong - real_A))
+        d_loss_fake          = torch.mean(torch.abs(AE_G_zD - G_zD)) #criterion_l1(AE_G_zD, G_zD.detach()) ##
 
-        D_loss = d_loss_real - k_t * d_loss_fake
+        D_loss = d_loss_real  - k_t * (d_loss_fake + d_loss_wrong_comment)
         D_loss.backward()
         optimizerD.step()
 
