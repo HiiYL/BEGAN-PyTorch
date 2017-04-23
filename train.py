@@ -21,15 +21,15 @@ import numpy as np
 
 import datetime
 
-
+import gc
 # python train.py --dataset aesthetics-unscaled --cuda --batchSize 1 --testBatchSize 1
 # configure("runs/aesthetics-{}".format(datetime.datetime.now()))
 
 # Training settings
 parser = argparse.ArgumentParser(description='BEGAN-PyTorch-implementation')
 parser.add_argument('--dataset', required=True, help='CelebA', default='CelebA')
-parser.add_argument('--batchSize', type=int, default=4, help='training batch size')
-parser.add_argument('--testBatchSize', type=int, default=4, help='testing batch size')
+parser.add_argument('--batchSize', type=int, default=2, help='training batch size')
+parser.add_argument('--testBatchSize', type=int, default=2, help='testing batch size')
 parser.add_argument('--nEpochs', type=int, default=200, help='number of epochs to train for')
 parser.add_argument('--lr', type=float, default=5e-5, help='Learning Rate. Default=0.001')
 parser.add_argument('--lr_update_step', type=float, default=10000, help='Reduce learning rate by factor of 2 every n iterations. Default=1')
@@ -75,6 +75,7 @@ train_transform = transforms.Compose([
 
 
 train_set = DatasetFromFolder(join(join(root_path,opt.dataset), "train"), train_transform)
+print(train_set)
 # test_set = get_test_set(root_path + opt.dataset)
 
 training_data_loader = DataLoader(dataset=train_set, num_workers=opt.threads, batch_size=opt.batchSize, shuffle=True)
@@ -85,7 +86,7 @@ print('===> Building model')
 if opt.netG:
     netG = torch.load(opt.netG)
     print('==> Loaded model.')
-    for parameter in netG:
+    for parameter in netG.parameters():
         parameter.requires_grad = True
 else:
     netG = G(h=opt.h, n=opt.n, output_dim=(3,opt.image_size,opt.image_size))
@@ -94,7 +95,7 @@ else:
 if opt.netD:
     netD = torch.load(opt.netD)
     print('==> Loaded model.')
-    for parameter in netG:
+    for parameter in netD.parameters():
         parameter.requires_grad = True
 else:
     netD = D(h=opt.h, n=opt.n, input_dim=(3,opt.image_size,opt.image_size))
@@ -132,7 +133,10 @@ fixed_sample = None
 fixed_x = None
 fixed_embedding = None
 def train(epoch, save_path, total_iterations, k_t, fixed_sample, fixed_x, fixed_embedding):
+    gc.enable()
+    gc.collect()
     for iteration, batch in enumerate(training_data_loader, 1):
+        gc.collect()
         real_a_cpu, embedding = batch
         ## GT Image
         real_A.data.resize_(real_a_cpu.size()).copy_(real_a_cpu)
@@ -250,5 +254,5 @@ for epoch in range(1, opt.nEpochs + 1):
     # net.eval()
     # test(epoch)
 
-    if epoch % 10 == 0:
+    if epoch % 3 == 0:
         checkpoint(epoch, save_path)
