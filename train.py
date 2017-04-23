@@ -41,7 +41,7 @@ parser.add_argument('--lamb', type=int, default=100, help='weight on L1 term in 
 parser.add_argument('--netD', default='', help="path to netD (to continue training)")
 parser.add_argument('--netG', default='', help="path to netG (to continue training)")
 parser.add_argument('--log_step', default=10, help="logging frequency")
-parser.add_argument('--image_size', default=64, help="image size")
+parser.add_argument('--image_size', default=128, help="image size")
 
 
 parser.add_argument('--beta1', type=float, default=0.9, help='beta1 for adam. default=0.5')
@@ -252,8 +252,8 @@ if not os.path.exists(save_path):
 
 configure(save_path)
 for epoch in range(1, opt.nEpochs + 1):
-    netG.train()
-    netD.train()
+    #netG.train()
+    #netD.train()
     total_iterations, k_t, fixed_sample, fixed_x, fixed_embedding = train(epoch, save_path, total_iterations, k_t, fixed_sample, fixed_x, fixed_embedding)
     # net.eval()
     # test(epoch)
