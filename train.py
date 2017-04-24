@@ -34,7 +34,7 @@ parser.add_argument('--nEpochs', type=int, default=200, help='number of epochs t
 parser.add_argument('--lr', type=float, default=5e-5, help='Learning Rate. Default=0.001')
 parser.add_argument('--poll_step', default=5000, help="how often to poll if training has plateaued")
 parser.add_argument('--patience', default=4, help="how long to wait before reducing lr")
-parser.add_argument('--lr_update_step', type=float, default=20000, help='Reduce learning rate by factor of 2 every n iterations. Default=50000')
+parser.add_argument('--lr_update_step', type=float, default=50000, help='Reduce learning rate by factor of 2 every n iterations. Default=50000')
 parser.add_argument('--cuda', action='store_true', help='use cuda?')
 
 parser.add_argument('--threads', type=int, default=8, help='number of threads for data loader to use')
@@ -136,7 +136,6 @@ k_t=0
 fixed_sample = None
 fixed_x = None
 fixed_embedding = None
-best_
 def train(epoch, save_path, total_iterations, k_t, fixed_sample, fixed_x, fixed_embedding):
     for iteration, batch in enumerate(training_data_loader, 1):
         real_a_cpu, embedding, wrong_embedding = batch
