@@ -32,6 +32,8 @@ parser.add_argument('--batchSize', type=int, default=4, help='training batch siz
 parser.add_argument('--testBatchSize', type=int, default=4, help='testing batch size')
 parser.add_argument('--nEpochs', type=int, default=200, help='number of epochs to train for')
 parser.add_argument('--lr', type=float, default=5e-5, help='Learning Rate. Default=0.001')
+parser.add_argument('--poll_step', default=5000, help="how often to poll if training has plateaued")
+parser.add_argument('--patience', default=4, help="how long to wait before reducing lr")
 parser.add_argument('--lr_update_step', type=float, default=20000, help='Reduce learning rate by factor of 2 every n iterations. Default=50000')
 parser.add_argument('--cuda', action='store_true', help='use cuda?')
 
@@ -102,7 +104,7 @@ else:
 
 print(netG)
 print(netD)
-criterion_l1 = nn.L1Loss()
+# criterion_l1 = nn.L1Loss()
 real_A = torch.FloatTensor(opt.batchSize, 3, opt.image_size, opt.image_size)
 embedding_v = torch.FloatTensor(opt.batchSize, 1024)
 wrong_embedding_v = torch.FloatTensor(opt.batchSize, 1024)
@@ -112,7 +114,7 @@ z_G = torch.FloatTensor(opt.batchSize, opt.h)
 if opt.cuda:
     netG = netG.cuda()
     netD = netD.cuda()
-    criterion_l1 = criterion_l1.cuda()
+    # criterion_l1 = criterion_l1.cuda()
     embedding_v = embedding_v.cuda()
     wrong_embedding_v = wrong_embedding_v.cuda()
     real_A = real_A.cuda()
@@ -134,22 +136,21 @@ k_t=0
 fixed_sample = None
 fixed_x = None
 fixed_embedding = None
+best_
 def train(epoch, save_path, total_iterations, k_t, fixed_sample, fixed_x, fixed_embedding):
     for iteration, batch in enumerate(training_data_loader, 1):
         real_a_cpu, embedding, wrong_embedding = batch
+
+
         ## GT Image
         real_A.data.resize_(real_a_cpu.size()).copy_(real_a_cpu)
         embedding_v.data.resize_(embedding.size()).copy_(embedding)
-
         wrong_embedding_v.data.resize_(wrong_embedding.size()).copy_(wrong_embedding)
-
         
         netD.zero_grad()
         netG.zero_grad()
 
-
         current_batch_size = embedding.size(0)
-
 
         z_D.data.resize_(current_batch_size, z_D.size(1)).normal_(0,1)
         z_G.data.resize_(current_batch_size, z_G.size(1)).normal_(0,1)
@@ -160,14 +161,13 @@ def train(epoch, save_path, total_iterations, k_t, fixed_sample, fixed_x, fixed_
 
         G_zG = netG(torch.cat((embedding_v,z_G),1))
         AE_G_zG = netD(G_zG,embedding_v)
-
         AE_x_wrong = netD(real_A, wrong_embedding_v)
 
         d_loss_real          = torch.mean(torch.abs(AE_x - real_A))#criterion_l1(AE_x, real_A) #
         d_loss_wrong_comment = torch.mean(torch.abs(AE_x_wrong - real_A))
         d_loss_fake          = torch.mean(torch.abs(AE_G_zD - G_zD)) #criterion_l1(AE_G_zD, G_zD.detach()) ##
 
-        D_loss = d_loss_real  - k_t * (d_loss_fake + d_loss_wrong_comment)
+        D_loss = d_loss_real  - ( k_t * 0.5 * (d_loss_fake + d_loss_wrong_comment) )
         D_loss.backward()
         optimizerD.step()
 
