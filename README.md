@@ -3,6 +3,17 @@
 BEGAN implementation in PyTorch.
 
 
+### Usage
+Place CelebA dataset at
+
+`<root>/dataset/CelebA/train/`
+
+then run
+
+`python train.py --dataset CelebA --cuda`
+
+
+
 Encoded Generated Image after 135 500 iterations
 
 ![135500_d_fake](https://cloud.githubusercontent.com/assets/7908951/25210485/a388ef14-25b2-11e7-887d-894bde0c6d7a.jpg)
